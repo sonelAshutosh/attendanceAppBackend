@@ -12,8 +12,12 @@ dotenv.config({ path: '.env' });
 // Connect to database
 connectDB();
 
-// Route files (will be added later)
-// const authRoutes = require('./routes/auth.routes');
+// Route files
+const authRoutes = require('./routes/auth.routes');
+const subjectRoutes = require('./routes/subject.routes');
+const classRoutes = require('./routes/class.routes');
+const studentRoutes = require('./routes/student.routes');
+const attendanceRoutes = require('./routes/attendance.routes');
 
 const app = express();
 
@@ -25,8 +29,12 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Mount routers (will be added later)
-// app.use('/api/auth', authRoutes);
+// Mount routers
+app.use('/api/auth', authRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 
 app.get('/', (req, res) => {
