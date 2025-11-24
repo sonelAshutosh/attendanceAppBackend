@@ -2,6 +2,8 @@ const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/appError');
 const StudentProfile = require('../models/studentProfile.model');
 const User = require('../models/user.model');
+const Class = require('../models/class.model'); // Import Class model
+const Subject = require('../models/subject.model'); // Import Subject model
 const qrcode = require('qrcode');
 const crypto = require('crypto');
 
@@ -57,11 +59,16 @@ exports.getStudentProfiles = asyncHandler(async (req, res, next) => {
 
 // @desc    Get single student profile by ID
 // @route   GET /api/students/:id
-// @access  Private/Admin, Teacher
+// @access  Private/Admin, Teacher, Student (self)
 exports.getStudentProfileById = asyncHandler(async (req, res, next) => {
     const profile = await StudentProfile.findById(req.params.id)
         .populate('userId', 'firstName lastName email role')
         .populate('currentClass', 'name');
+
+    // If a student is requesting their own profile, ensure authorization
+    if (req.user.role === 'Student' && profile.userId.toString() !== req.user.id.toString()) {
+        return next(new AppError('Not authorized to view this student profile', 403));
+    }
 
     if (!profile) {
         return next(new AppError(`Student profile not found with id of ${req.params.id}`, 404));
@@ -75,19 +82,27 @@ exports.getStudentProfileById = asyncHandler(async (req, res, next) => {
 
 // @desc    Update a student profile
 // @route   PUT /api/students/:id
-// @access  Private/Admin, Teacher
+// @access  Private/Admin, Teacher, Student (self)
 exports.updateStudentProfile = asyncHandler(async (req, res, next) => {
     // Prevent updating userId or studentId easily
     const { userId, studentId, ...updateData } = req.body;
 
-    const profile = await StudentProfile.findByIdAndUpdate(req.params.id, updateData, {
-        new: true,
-        runValidators: true,
-    });
+    let profile = await StudentProfile.findById(req.params.id);
 
     if (!profile) {
         return next(new AppError(`Student profile not found with id of ${req.params.id}`, 404));
     }
+
+    // If a student is updating their own profile, ensure authorization
+    if (req.user.role === 'Student' && profile.userId.toString() !== req.user.id.toString()) {
+        return next(new AppError('Not authorized to update this student profile', 403));
+    }
+
+
+    profile = await StudentProfile.findByIdAndUpdate(req.params.id, updateData, {
+        new: true,
+        runValidators: true,
+    });
 
     res.status(200).json({
         success: true,
@@ -115,9 +130,14 @@ exports.deleteStudentProfile = asyncHandler(async (req, res, next) => {
 
 // @desc    Get a student's QR code image
 // @route   GET /api/students/:id/qrcode
-// @access  Private/Admin, Teacher
+// @access  Private/Admin, Teacher, Student (self)
 exports.getStudentQrCode = asyncHandler(async (req, res, next) => {
     const profile = await StudentProfile.findById(req.params.id);
+
+    // If a student is requesting their own QR code, ensure authorization
+    if (req.user.role === 'Student' && profile.userId.toString() !== req.user.id.toString()) {
+        return next(new AppError('Not authorized to view this QR code', 403));
+    }
 
     if (!profile) {
         return next(new AppError(`Student profile not found with id of ${req.params.id}`, 404));
@@ -134,5 +154,87 @@ exports.getStudentQrCode = asyncHandler(async (req, res, next) => {
                 qrCodeDataUrl: url
             }
         });
+    });
+});
+
+// @desc    Student joins a class
+// @route   POST /api/students/join-class
+// @access  Private/Student
+exports.joinClass = asyncHandler(async (req, res, next) => {
+    const { classCode } = req.body;
+    const studentUserId = req.user.id; // Logged-in user's ID
+
+    if (!classCode) {
+        return next(new AppError('Please provide a class code', 400));
+    }
+
+    // Find the class by code
+    const classToJoin = await Class.findOne({ code: classCode });
+    if (!classToJoin) {
+        return next(new AppError(`Class not found with code ${classCode}`, 404));
+    }
+
+    // Find the student profile for the logged-in user
+    const studentProfile = await StudentProfile.findOne({ userId: studentUserId });
+    if (!studentProfile) {
+        return next(new AppError('Student profile not found for this user', 404));
+    }
+
+    // Check if student is already in the class
+    if (classToJoin.students.includes(studentProfile._id)) {
+        return next(new AppError('You are already enrolled in this class', 400));
+    }
+
+    // Add student to class
+    classToJoin.students.push(studentProfile._id);
+    await classToJoin.save();
+
+    // Set student's current class
+    studentProfile.currentClass = classToJoin._id;
+    await studentProfile.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Successfully joined class',
+        data: classToJoin,
+    });
+});
+
+// @desc    Student registers for a subject
+// @route   POST /api/students/register-subject
+// @access  Private/Student
+exports.registerSubject = asyncHandler(async (req, res, next) => {
+    const { subjectId } = req.body;
+    const studentUserId = req.user.id; // Logged-in user's ID
+
+    if (!subjectId) {
+        return next(new AppError('Please provide a subject ID', 400));
+    }
+
+    // Find the subject
+    const subjectToRegister = await Subject.findById(subjectId);
+    if (!subjectToRegister) {
+        return next(new AppError(`Subject not found with ID ${subjectId}`, 404));
+    }
+
+    // Find the student profile for the logged-in user
+    const studentProfile = await StudentProfile.findOne({ userId: studentUserId });
+    if (!studentProfile) {
+        return next(new AppError('Student profile not found for this user', 404));
+    }
+
+    // Check if student is already registered for the subject
+    if (studentProfile.subjects.includes(subjectId)) {
+        return next(new AppError('You are already registered for this subject', 400));
+    }
+
+    // Add subject to student's profile
+    studentProfile.subjects.push(subjectToRegister._id);
+    await studentProfile.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Successfully registered for subject',
+        data: subjectToRegister,
     });
 });

@@ -7,6 +7,15 @@ const ClassSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+  code: {
+    type: String,
+    required: [true, 'Class code is required'],
+    unique: true,
+    trim: true,
+    uppercase: true,
+    minlength: 5,
+    maxlength: 10,
+  },
   description: {
     type: String,
     trim: true,

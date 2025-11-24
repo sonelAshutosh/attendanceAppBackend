@@ -6,9 +6,15 @@ const StudentProfile = require('../models/studentProfile.model');
 
 // @desc    Create a new class
 // @route   POST /api/classes
-// @access  Private/Admin
+// @access  Private/Admin, Private/Teacher
 exports.createClass = asyncHandler(async (req, res, next) => {
-  const { name, description, teacherId } = req.body;
+  let { name, description, teacherId } = req.body;
+  const { user } = req; // User attached from 'protect' middleware
+
+  // If the user is a Teacher, they are the teacher of the class they create
+  if (user.role === 'Teacher') {
+    teacherId = user._id;
+  }
 
   if (!name || !teacherId) {
     return next(new AppError('Please provide a name and a teacherId', 400));

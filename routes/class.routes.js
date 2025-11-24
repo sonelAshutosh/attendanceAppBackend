@@ -17,7 +17,7 @@ const router = express.Router();
 // Admin-only routes for creating, updating, deleting classes
 router
   .route('/')
-  .post(protect, authorizeRoles('Admin'), createClass)
+  .post(protect, authorizeRoles('Admin', 'Teacher'), createClass)
   .get(protect, authorizeRoles('Admin', 'Teacher'), getClasses); // Teachers can view classes
 
 router

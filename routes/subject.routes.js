@@ -10,17 +10,16 @@ const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// All routes here are protected and restricted to Admins
+// Protect all routes
 router.use(protect);
-router.use(authorizeRoles('Admin'));
 
 router.route('/')
-  .post(createSubject)
-  .get(getSubjects);
+  .post(authorizeRoles('Admin', 'Teacher'), createSubject)
+  .get(authorizeRoles('Admin', 'Teacher'), getSubjects);
 
 router.route('/:id')
-  .get(getSubjectById)
-  .put(updateSubject)
-  .delete(deleteSubject);
+  .get(authorizeRoles('Admin', 'Teacher'), getSubjectById)
+  .put(authorizeRoles('Admin'), updateSubject)
+  .delete(authorizeRoles('Admin'), deleteSubject);
 
 module.exports = router;
