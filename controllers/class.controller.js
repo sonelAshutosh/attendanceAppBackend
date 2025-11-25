@@ -86,7 +86,7 @@ exports.getClassById = asyncHandler(async (req, res, next) => {
     .populate({
       path: 'students',
       select: 'studentId qrCode',
-      populate: { path: 'userId', select: 'firstName lastName email' },
+      populate: { path: 'userId', select: 'firstName lastName email avatar' },
     })
 
   if (!classData) {

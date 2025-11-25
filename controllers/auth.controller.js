@@ -67,6 +67,7 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatar: user.avatar,
       token: generateToken(user._id, user.role),
     })
   } else {
@@ -97,6 +98,7 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatar: user.avatar,
       token: generateToken(user._id, user.role),
     }
 
@@ -130,5 +132,6 @@ exports.getMe = asyncHandler(async (req, res, next) => {
     role: user.role,
     firstName: user.firstName,
     lastName: user.lastName,
+    avatar: user.avatar,
   })
 })

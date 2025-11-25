@@ -3,7 +3,6 @@ const AppError = require('../utils/appError')
 const StudentProfile = require('../models/studentProfile.model')
 const User = require('../models/user.model')
 const Class = require('../models/class.model') // Import Class model
-const Subject = require('../models/subject.model') // Import Subject model
 const qrcode = require('qrcode')
 const crypto = require('crypto')
 
@@ -247,46 +246,5 @@ exports.joinClass = asyncHandler(async (req, res, next) => {
     success: true,
     message: 'Successfully joined class',
     data: classToJoin,
-  })
-})
-
-// @desc    Student registers for a subject
-// @route   POST /api/students/register-subject
-// @access  Private/Student
-exports.registerSubject = asyncHandler(async (req, res, next) => {
-  const { subjectId } = req.body
-  const studentUserId = req.user.id // Logged-in user's ID
-
-  if (!subjectId) {
-    return next(new AppError('Please provide a subject ID', 400))
-  }
-
-  // Find the subject
-  const subjectToRegister = await Subject.findById(subjectId)
-  if (!subjectToRegister) {
-    return next(new AppError(`Subject not found with ID ${subjectId}`, 404))
-  }
-
-  // Find the student profile for the logged-in user
-  const studentProfile = await StudentProfile.findOne({ userId: studentUserId })
-  if (!studentProfile) {
-    return next(new AppError('Student profile not found for this user', 404))
-  }
-
-  // Check if student is already registered for the subject
-  if (studentProfile.subjects.includes(subjectId)) {
-    return next(
-      new AppError('You are already registered for this subject', 400)
-    )
-  }
-
-  // Add subject to student's profile
-  studentProfile.subjects.push(subjectToRegister._id)
-  await studentProfile.save()
-
-  res.status(200).json({
-    success: true,
-    message: 'Successfully registered for subject',
-    data: subjectToRegister,
   })
 })

@@ -8,7 +8,6 @@ const {
   getStudentQrCode,
   getMyProfile, // Add this
   joinClass, // Import new function
-  registerSubject, // Import new function
 } = require('../controllers/student.controller')
 const { protect, authorizeRoles } = require('../middleware/authMiddleware')
 
@@ -43,8 +42,5 @@ router
 
 // New routes for students to interact with classes and subjects
 router.route('/join-class').post(protect, authorizeRoles('Student'), joinClass)
-router
-  .route('/register-subject')
-  .post(protect, authorizeRoles('Student'), registerSubject)
 
 module.exports = router
