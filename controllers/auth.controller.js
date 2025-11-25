@@ -36,6 +36,30 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
     lastName,
   })
 
+  // If user is a student, create a StudentProfile
+  if (user && user.role === 'Student') {
+    const StudentProfile = require('../models/studentProfile.model')
+    const QRCode = require('qrcode')
+
+    // Generate student ID (you can customize this format)
+    const studentId = `STU${Date.now().toString().slice(-8)}`
+
+    // Generate QR code
+    const qrCodeData = JSON.stringify({
+      studentId,
+      userId: user._id,
+      name: `${user.firstName} ${user.lastName}`,
+    })
+    const qrCode = await QRCode.toDataURL(qrCodeData)
+
+    // Create student profile
+    await StudentProfile.create({
+      userId: user._id,
+      studentId,
+      qrCode,
+    })
+  }
+
   if (user) {
     res.status(201).json({
       _id: user._id,
