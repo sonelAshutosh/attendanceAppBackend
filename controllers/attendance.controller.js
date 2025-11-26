@@ -160,10 +160,36 @@ exports.markQrAttendance = asyncHandler(async (req, res, next) => {
     return next(new AppError('Not authorized for this session', 403))
   }
 
-  const studentProfile = await StudentProfile.findOne({ qrCode: qrCode })
+  let studentProfile = null
+
+  // Try to parse QR code as JSON
+  try {
+    const qrData = JSON.parse(qrCode)
+
+    // Look up student by studentId or userId from the parsed JSON
+    if (qrData.studentId) {
+      studentProfile = await StudentProfile.findOne({
+        studentId: qrData.studentId,
+      })
+    } else if (qrData.userId) {
+      studentProfile = await StudentProfile.findOne({ userId: qrData.userId })
+    }
+  } catch (parseError) {
+    // If JSON parsing fails, try to find by the raw qrCode field
+    studentProfile = await StudentProfile.findOne({ qrCode: qrCode })
+
+    // If still not found, try to find by studentId directly
+    if (!studentProfile) {
+      studentProfile = await StudentProfile.findOne({ studentId: qrCode })
+    }
+  }
+
   if (!studentProfile) {
     return next(new AppError('Invalid QR code. Student not found.', 404))
   }
+
+  // Populate the student profile with user data for the response
+  await studentProfile.populate('userId', 'firstName lastName')
 
   // Check if student is in the class for this session
   const classData = await Class.findById(session.classId)
@@ -190,6 +216,13 @@ exports.markQrAttendance = asyncHandler(async (req, res, next) => {
     sessionId,
     studentProfileId: studentProfile._id,
     status: 'Present', // QR scan always marks as present
+  })
+
+  // Populate the record with student info for the response
+  await record.populate({
+    path: 'studentProfileId',
+    select: 'studentId',
+    populate: { path: 'userId', select: 'firstName lastName' },
   })
 
   res.status(201).json({ success: true, data: record })
@@ -306,7 +339,16 @@ exports.getStudentRecords = asyncHandler(async (req, res, next) => {
 
   const records = await AttendanceRecord.find({
     studentProfileId: req.params.studentProfileId,
-  }).populate('sessionId')
+  })
+    .populate({
+      path: 'sessionId',
+      populate: {
+        path: 'classId',
+        select: 'name subject code',
+      },
+    })
+    .sort({ timestamp: -1 })
+
   res.status(200).json({ success: true, count: records.length, data: records })
 })
 
